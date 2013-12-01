@@ -25,7 +25,7 @@ from abc import ABCMeta, abstractproperty
 from copy import deepcopy
 from os import urandom, remove
 from os.path import isfile
-from hashlib import sha1
+from hashlib import sha1, sha512
 from hmac import HMAC
 from uuid import uuid4
 from bson.dbref import DBRef
@@ -34,7 +34,8 @@ from flask.ext.bcrypt import generate_password_hash
 from flask.ext.mongoengine import Document
 from mongoengine import (
     StringField, DateTimeField, DictField, BooleanField, EmbeddedDocument,
-    EmbeddedDocumentField, ListField, EmailField
+    EmbeddedDocumentField, ListField, EmailField, MapField, ReferenceField,
+    ObjectIdField
 )
 
 from victims_web.config import (
@@ -238,7 +239,7 @@ class Account(ValidatedDocument):
         ValidatedDocument.save(self, *args, **kwargs)
 
 
-class Removal(JsonifyMixin, ValidatedDocument):
+class Removal_(JsonifyMixin, ValidatedDocument):
     """
     A removal entry
     """
@@ -265,32 +266,145 @@ class CVE(JsonifyMixin, EmbeddedDocument):
     addedon = DateTimeField(default=datetime.datetime.utcnow, required=True)
 
 
-# Unused due to Flask-Admin Issues
-# TODO: Look at useful solutions/workarounds
-'''
-class HashContent(JsonifyMixin, EmbeddedDocument, ValidatedDocument):
+class UpdateableDocument(JsonifyMixin, ValidatedDocument):
     """
-    The contents of a `HashEntry`
+    An abstract document to handle models that are updatable. Provides fields
+    like group, created and modified.
     """
-    combined = StringField(regex='^[a-fA-F0-9]*$', required=True)
-    files = DictField(default=None)
+    meta = {
+        'allow_inheritance': False,
+        'abstract': True
+    }
+
+    group = StringField()
+    created = DateTimeField(default=datetime.datetime.utcnow)
+    modified = DateTimeField(default=datetime.datetime.utcnow)
+
+    @property
+    def is_dirty(self):
+        """
+        Helper method to determine if document has changed fields.
+        """
+        return hasattr(self, '_changed_fields') and len(self._changed_fields) > 0
+
+    @property
+    def is_new(self):
+        """
+        Helper method to determine if document is new (user created).
+        """
+        return hasattr(self, '_created') and self._created
+
+    def on_create(self):
+        """
+        Additional create actions to perform if document is new. By default
+        does nothing.
+        """
+        pass
+
+    def on_update(self):
+        """
+        Additional update actions to perform if document is dirty. By default
+        does nothing.
+        """
+        pass
+
+    def on_delete(self):
+        """
+        Additional delete actions to perform if document deletion succeeds. By
+        default does nothing.
+        """
+        pass
+
+    def save(self, *args, **kwargs):
+        """
+        A save wrapper that ensures the modified timestamp is updated if changes
+        exists.
+        """
+        if self.is_new:
+            self.on_create()
+
+        if self.is_dirty:
+            # update modified timestamp
+            self.modified = datetime.datetime.utcnow()
+            self.on_update()
+        super(UpdateableDocument, self).save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """
+        A delete wrapper that creates a new Removal document once deletion
+        succeeds.
+        """
+        super(UpdateableDocument, self).delete(*args, **kwargs)
+        # post deletion, add a delete entry
+        Removal(
+            oid=self.id,
+            group=self.group,
+            collection=self._meta['collection']
+        ).save()
+        self.on_delete()
 
 
-class HashEntry(JsonifyMixin, EmbeddedDocument, ValidatedDocument):
+class Fingerprint(UpdateableDocument):
     """
-    A hash entry defining all valid algorithms
+    A document to contain an artifact's Victims fingerprtint.
     """
-    for alg in HASHING_ALGORITHMS:
-        exec('%s = EmbeddedDocumentField(HashContent, default=None)' % (alg))
+    meta = {'collection': 'fingerprints'}
+
+    uuid = StringField(default=None)
+    files = DictField()
+
+    def update_uuid(self):
+        """
+        Update the document's uuid based. The uuid is a SHA-512 sum of all file
+        fingerprints sorted and combined.
+        """
+        h = sha512()
+        for key in sorted(self.files.keys()):
+            h.update(key)
+        self.uuid = h.hexdigest()
+
+    def on_create(self):
+        self.update_uuid()
+
+    def on_update(self):
+        self.update_uuid()
 
 
-class Coordinates(JsonifyMixin, EmbeddedDocument, ValidatedDocument):
+class Artifact(UpdateableDocument):
     """
-    Group coordinates for hash entry
+    An artifact document contains artifact checksum in multiple algorithms and
+    referes to a victims fingerprint document associated with the file.
     """
-    for key in group_coordinates():
-        exec('%s = StringField(default=None)' % (key))
-'''
+    meta = {'collection': 'artifacts'}
+
+    checksums = MapField(field=StringField())
+    fingerprint = ReferenceField(Fingerprint, default=None)
+
+
+class Record(UpdateableDocument):
+    """
+    A record document is the meta container holding CVE, coordinate and other
+    information pertaining to an approved submission.
+    """
+    meta = {'collection': 'records'}
+
+    coordinates = DictField(default=None)
+    cves = ListField(required=True)
+    filename = StringField(default=None)
+    artifact = ReferenceField(Artifact)
+
+
+class Removal(UpdateableDocument):
+    """
+    A removal document maintains history on all UpdateableDocument's that were
+    deleted.
+    """
+    # TODO: rename collection name
+    meta = {'collection': 'removals_'}
+
+    oid = ObjectIdField()
+    group = StringField()
+    collection = StringField()
 
 
 class CoordinateDict(RestrictedDict):
@@ -372,7 +486,7 @@ class Hash(JsonifyMixin, EmbeddedDocument, ValidatedDocument):
 
     def notify_change(self, reason='DELETE'):
         if self.status == 'RELEASED':
-            removal = Removal(hash=self.hash, group=self.group, reason=reason)
+            removal = Removal_(hash=self.hash, group=self.group, reason=reason)
             removal.save()
 
     def save(self, *args, **kwargs):
