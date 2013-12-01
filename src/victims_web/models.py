@@ -285,7 +285,8 @@ class UpdateableDocument(JsonifyMixin, ValidatedDocument):
         """
         Helper method to determine if document has changed fields.
         """
-        return hasattr(self, '_changed_fields') and len(self._changed_fields) > 0
+        return hasattr(self, '_changed_fields') \
+            and len(self._changed_fields) > 0
 
     @property
     def is_new(self):
@@ -317,8 +318,8 @@ class UpdateableDocument(JsonifyMixin, ValidatedDocument):
 
     def save(self, *args, **kwargs):
         """
-        A save wrapper that ensures the modified timestamp is updated if changes
-        exists.
+        A save wrapper that ensures the modified timestamp is updated if
+        changes exists.
         """
         if self.is_new:
             self.on_create()
