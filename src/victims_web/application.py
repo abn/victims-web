@@ -71,6 +71,7 @@ app.session_interface = MongoEngineSessionInterface(app.db)
 from victims_web.admin import administration_setup
 from victims_web.blueprints.service_v1 import v1
 from victims_web.blueprints.service_v2 import v2, SUBMISSION_ROUTES
+from victims_web.blueprints.service import v3
 from victims_web.blueprints.ui import ui
 from victims_web.blueprints.auth import auth
 
@@ -138,6 +139,7 @@ def error_500(e):
 # Register blueprints
 app.register_blueprint(v1, url_prefix='/service/v1')
 app.register_blueprint(v2, url_prefix='/service/v2')
+app.register_blueprint(v3, url_prefix='/service/v3')
 app.register_blueprint(v2, url_prefix='/service')
 app.register_blueprint(ui)
 app.register_blueprint(auth)
