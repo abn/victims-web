@@ -266,7 +266,44 @@ class CVE(JsonifyMixin, EmbeddedDocument):
     addedon = DateTimeField(default=datetime.datetime.utcnow, required=True)
 
 
-class UpdateableDocument(JsonifyMixin, ValidatedDocument):
+class JsonMixin(object):
+    """
+    JSON mixin
+    """
+    JSON_SKIP = []
+
+    def handle_special_objs(self, obj):
+        """
+        Handle JSON string generation for 'special' objects.
+
+        :param obj: Document field's PyObject representation
+        :rtype: string
+        """
+        if hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        elif isinstance(obj, DBRef):
+            return str(Account.objects.get(id=obj.id).username)
+        return str(obj)
+
+    @property
+    def json_skip(self):
+        """
+        Overide this property to skip fields when generating JSON string
+        """
+        return self.JSON_SKIP
+
+    def to_json(self):
+        result = {}
+        for key in self._fields:
+            if key not in self.json_skip:
+                value = getattr(self, key)
+                if value is not None:
+                    result[key] = getattr(self, key)
+
+        return json.dumps(result, default=self.handle_special_objs)
+
+
+class UpdateableDocument(JsonMixin, ValidatedDocument):
     """
     An abstract document to handle models that are updatable. Provides fields
     like group, created and modified.
@@ -279,6 +316,12 @@ class UpdateableDocument(JsonifyMixin, ValidatedDocument):
     group = StringField()
     created = DateTimeField(default=datetime.datetime.utcnow)
     modified = DateTimeField(default=datetime.datetime.utcnow)
+
+    @property
+    def json_skip(self):
+        return super(UpdateableDocument, self).json_skip + [
+            'group', 'created', 'modified'
+        ]
 
     @property
     def is_dirty(self):
