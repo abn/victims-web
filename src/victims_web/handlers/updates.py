@@ -18,14 +18,16 @@
 Victims handler for updates.
 """
 from datetime import datetime
+from mongoengine.fields import ReferenceField
+from victims_web.config import VICTIMS_TIME_FMT
 from victims_web.handlers.query import LookAheadQuerySet
 from victims_web.models import \
     Record, Artifact, Fingerprint, Removal, UpdateableDocument
 
 
 # The begining of time in the victims update universe
-BEGINNING_OF_TIME = datetime.strptime(
-    '1970-01-01T00:00:00', '%Y-%m-%dT%H:%M:%S')
+BEGINNING_OF_TIME_STR = '1970-01-01T00:00:00'
+BEGINNING_OF_TIME = datetime.strptime(BEGINNING_OF_TIME_STR, VICTIMS_TIME_FMT)
 
 
 class UpdateAction(object):
@@ -37,24 +39,30 @@ class UpdateAction(object):
     REMOVE = 'REMOVE'
 
 
-class UpdateStream():
+class UpdateStream(object):
     """
     A combinator for multiple QuerySets of updatable models.
     """
     # Models to combine stream from
     MODELS = [Removal, Fingerprint, Artifact, Record]
 
-    def __init__(self, group, since=BEGINNING_OF_TIME):
+    def __init__(self, group, since=BEGINNING_OF_TIME, exclude_ref=True):
         self._streams = []
         self._since = since
         for Model in self.MODELS:
             if issubclass(Model, UpdateableDocument):
+                excludes = []
+                if exclude_ref:
+                    excludes = [
+                        f for f, c in Model._fields.items()
+                        if isinstance(c, ReferenceField)
+                    ]
                 self._streams.append(
                     LookAheadQuerySet(
                         Model.objects(
                             modified__gt=self.since,
                             group=group
-                        ).order_by('created')
+                        ).exclude(*excludes).order_by('created')
                     )
                 )
 
@@ -69,14 +77,23 @@ class UpdateStream():
     @property
     def active_streams(self):
         """
-        Fetch all active streams in this instance. An active stream is a stream
-        with documents remaining in the `QuerySet`.
+        Fetch all active streams in this instance. An active stream is a
+        `QuerySet` with documents remaining.
         """
         active = []
         for stream in self.streams:
             if stream.lookahead is not None:
                 active.append(stream)
         return active
+
+    def count(self):
+        """
+        Return combined count across all query sets.
+        """
+        total = 0
+        for stream in self.streams:
+            total += stream.count()
+        return total
 
     def action(self, doc):
         """

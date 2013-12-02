@@ -7,6 +7,9 @@ from logging import getLogger, DEBUG
 _ENFORCE = True
 _ENFORCE_KEYS = ['SECRET_KEY', 'DEBUG', 'TESTING']
 
+# Time format
+VICTIMS_TIME_FMT = '%Y-%m-%dT%H:%M:%S'
+
 # Base Dir
 VICTIMS_BASE_DIR = environ.get('VICTIMS_BASE_DIR', './victims-web-runtime')
 
