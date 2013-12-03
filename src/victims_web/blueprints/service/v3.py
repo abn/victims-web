@@ -40,7 +40,7 @@ def make_response(data, code=200):
 
 def format_document(doc, action, since):
     return '{%s: %s, "action": %s)' % (
-        doc._meta['collection'], doc.to_json(), action)
+        doc._meta['collection'], doc.jsonify(), action)
 
 
 @bp.route('/updates/<group>/', defaults={'since': None})
