@@ -39,8 +39,8 @@ def make_response(data, code=200):
 
 
 def format_document(doc, action, since):
-    return '{%s: %s, "action": %s)' % (
-        doc._meta['collection'], doc.jsonify(), action)
+    response = '{"c": "%s", "a": "%s", "d": %s}'
+    return response % (doc._meta['collection'], action, doc.jsonify())
 
 
 @bp.route('/updates/<group>/', defaults={'since': None})
@@ -49,7 +49,8 @@ def updates(group, since):
     if since is None:
         since = BEGINNING_OF_TIME
     stream = UpdateStream(group, since)
-    resp = ''
+    docs = []
     for s, a in stream:
-        resp += format_document(s, a, since)
+        docs.append(format_document(s, a, since))
+    resp = '{"resp": [%s]}' % (','.join(docs))
     return resp
