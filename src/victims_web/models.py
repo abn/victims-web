@@ -293,6 +293,8 @@ class JsonMixin(object):
     def jsonify(self):
         """
         Get JSON string representation of this Document instance.
+
+        :rtype: string
         """
         return json.dumps(self.mongify(), default=self._handle_special_objs)
 
