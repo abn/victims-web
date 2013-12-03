@@ -38,7 +38,7 @@ def make_response(data, code=200):
     )
 
 
-def format_document(doc, action, since):
+def format_document(doc, action):
     response = '{"c": "%s", "a": "%s", "d": %s}'
     return response % (doc._meta['collection'], action, doc.jsonify())
 
@@ -51,6 +51,6 @@ def updates(group, since):
     stream = UpdateStream(group, since)
     docs = []
     for s, a in stream:
-        docs.append(format_document(s, a, since))
+        docs.append(format_document(s, a))
     resp = '{"resp": [%s]}' % (','.join(docs))
     return resp
