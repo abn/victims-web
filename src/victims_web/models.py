@@ -272,7 +272,7 @@ class JsonMixin(object):
     """
     JSON_SKIP = []
 
-    def handle_special_objs(self, obj):
+    def _handle_special_objs(self, obj):
         """
         Handle JSON string generation for 'special' objects.
 
@@ -281,8 +281,6 @@ class JsonMixin(object):
         """
         if hasattr(obj, 'isoformat'):
             return obj.isoformat()
-        elif isinstance(obj, DBRef):
-            return str(Account.objects.get(id=obj.id).username)
         return str(obj)
 
     @property
@@ -292,15 +290,32 @@ class JsonMixin(object):
         """
         return self.JSON_SKIP
 
-    def to_json(self):
+    def jsonify(self):
+        """
+        Get JSON string representation of this Document instance.
+        """
+        return json.dumps(self.mongify(), default=self._handle_special_objs)
+
+    def mongify(self, raw=False):
+        """
+        Return a json friendly filtered python dict
+
+        :param raw: Return the raw `to_mongo` return value of the `Document`.
+            Defaults to False.
+        :type raw: bool
+        """
+        if raw:
+            return self.to_mongo()
+
         result = {}
         for key in self._fields:
             if key not in self.json_skip:
                 value = getattr(self, key)
+                if isinstance(value, JsonMixin):
+                    value = value.mongify()
                 if value is not None:
-                    result[key] = getattr(self, key)
-
-        return json.dumps(result, default=self.handle_special_objs)
+                    result[key] = value
+        return result
 
 
 class UpdateableDocument(JsonMixin, ValidatedDocument):
