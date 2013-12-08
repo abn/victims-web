@@ -39,6 +39,21 @@ class UpdateAction(object):
     REMOVE = 'REMOVE'
 
 
+class UpdateItem(object):
+
+    def __init__(self, doc, action):
+        self._doc = doc
+        self._action = action
+
+    @property
+    def document(self):
+        return self._doc
+
+    @property
+    def action(self):
+        return self._action
+
+
 class UpdateStream(object):
     """
     A combinator for multiple QuerySets of updatable models.
@@ -86,15 +101,6 @@ class UpdateStream(object):
                 active.append(stream)
         return active
 
-    def count(self):
-        """
-        Return combined count across all query sets.
-        """
-        total = 0
-        for stream in self.streams:
-            total += stream.count()
-        return total
-
     def action(self, doc):
         """
         Determine update action for a given document. The determination is made
@@ -111,6 +117,15 @@ class UpdateStream(object):
             return UpdateAction.ADD
         else:
             return UpdateAction.UPDATE
+
+    def count(self):
+        """
+        Return combined count across all query sets.
+        """
+        total = 0
+        for stream in self.streams:
+            total += stream.count()
+        return total
 
     def _stream_key(self, qs):
         """
@@ -145,5 +160,5 @@ class UpdateStream(object):
         """
         doc = self.next()
         while doc is not None:
-            yield (doc, self.action(doc))
+            yield UpdateItem(doc, self.action(doc))
             doc = self.next()
