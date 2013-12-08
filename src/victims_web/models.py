@@ -319,6 +319,14 @@ class JsonMixin(object):
                     result[key] = value
         return result
 
+    @property
+    def json(self):
+        return self.jsonify()
+
+    @property
+    def mongo(self):
+        return self.mongify()
+
 
 class UpdateableDocument(JsonMixin, ValidatedDocument):
     """
