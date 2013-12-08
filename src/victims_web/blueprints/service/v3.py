@@ -18,39 +18,31 @@
 Version 3 of the webservice. Remember service versions are not the same as
 application versions.
 """
-from flask import Blueprint, Response
+from flask import Blueprint
 
+from victims_web.handlers.routes import RouteRegex as Regex, maketime
 from victims_web.handlers.updates import BEGINNING_OF_TIME, UpdateStream
+from victims_web.blueprints.service.response import ServiceResponseFactory
 
+factory = ServiceResponseFactory(3, None)
 
 bp = Blueprint('service.v3', __name__)
 
-# Module globals
-EOL = None
-MIME_TYPE = 'application/json'
+
+@bp.route('/', defaults={'path': ''})
+@bp.route('/<path:path>/')
+def invalid_call(path):
+    return factory.error('Invalid API call', 404, path=path)
 
 
-def make_response(data, code=200):
-    return Response(
-        response=data,
-        status=code,
-        mimetype=MIME_TYPE
-    )
-
-
-def format_document(doc, action):
-    response = '{"c": "%s", "a": "%s", "d": %s}'
-    return response % (doc._meta['collection'], action, doc.jsonify())
-
-
-@bp.route('/updates/<group>/', defaults={'since': None})
-@bp.route('/updates/<group>/<since>')
+@bp.route('/updates/%s/' % (Regex.GROUP), defaults={'since': BEGINNING_OF_TIME})
+@bp.route('/updates/%s/%s/' % (Regex.GROUP, Regex.SINCE))
 def updates(group, since):
-    if since is None:
-        since = BEGINNING_OF_TIME
-    stream = UpdateStream(group, since)
-    docs = []
-    for s, a in stream:
-        docs.append(format_document(s, a))
-    resp = '{"resp": [%s]}' % (','.join(docs))
-    return resp
+    if isinstance(since, str) or isinstance(since, unicode):
+        since = maketime(since)
+    return factory.make_response(UpdateStream(group, since))
+
+
+@bp.route('/status/')
+def status():
+    return factory.status()
