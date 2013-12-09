@@ -405,10 +405,18 @@ class UpdateableDocument(JsonMixin, ValidatedDocument):
         """
         super(UpdateableDocument, self).delete(*args, **kwargs)
         # post deletion, add a delete entry
+
+        # backwards compat
+        hash = None
+        if isinstance(self, Artifact):
+            if 'sha512' in self.checksums:
+                hash = self.checksums['sha512']
+
         Removal(
             oid=self.id,
             group=self.group,
-            collection=self._meta['collection']
+            collection=self._meta['collection'],
+            hash=hash
         ).save()
         self.on_delete()
 
@@ -470,6 +478,9 @@ class Removal(UpdateableDocument):
     """
     # TODO: rename collection name
     meta = {'collection': 'removals_'}
+
+    # backwards compat for v2
+    hash = StringField(default=None)
 
     oid = ObjectIdField()
     group = StringField()
