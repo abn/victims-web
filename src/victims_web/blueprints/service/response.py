@@ -20,90 +20,6 @@ from flask import Response
 from victims_web.handlers.updates import UpdateItem, UpdateStream
 
 
-class ServiceResponseFactory(object):
-    MIME_TYPE = 'application/json'
-
-    def __init__(self, version, eol, supported=True, recommended=True):
-        self._eol = eol
-        self._version = version
-        self._supported = supported
-        self._recommended = recommended
-
-    @property
-    def eol(self):
-        return self._eol
-
-    @property
-    def version(self):
-        return self._version
-
-    @property
-    def recommended(self):
-        return self._recommended
-
-    @property
-    def supported(self):
-        return self._supported
-
-    def format_data(self, data):
-        return {'data': data}
-
-    def create_stream(self, data):
-        return StreamedSerialResponseValue(data, '{"data": ', "}")
-
-    def make_response(self, data, code=200):
-        if isinstance(data, UpdateStream):
-            data = self.create_stream(data)
-        elif isinstance(data, str):
-            data = data
-        else:
-            data = json.dumps(self.format_data(data))
-
-        return Response(
-            response=data,
-            status=code,
-            mimetype=self.MIME_TYPE
-        )
-
-    def error(self, msg='Could not understand request.', code=400, **kwargs):
-        """
-        Returns an error json response.
-
-        :Parameters:
-            - `msg`: Error message to be returned in json string.
-            - `code`: The code to return as status code for the response.
-        """
-        kwargs['error'] = msg
-        return self.make_response(json.dumps(kwargs), code)
-
-    def success(self, msg='Request successful.', code=201, **kwargs):
-        """
-        Returns a success json resposne.
-
-        :Paramenters:
-            - `msg`: Error message to be returned in json string.
-            - `code`: The code to return as status code for the response.
-        """
-        kwargs['success'] = msg
-        return self.make_response(json.dumps(kwargs), code)
-
-    def status(self):
-        """
-        Returns the status for this service.
-        """
-        data = {}
-
-        if self.eol is not None:
-            data['eol'] = self.eol
-        data['supported'] = self.supported
-        data['recommended'] = self.recommended
-        data['version'] = self.version
-        data['format'] = self.MIME_TYPE
-        data['endpoint'] = '/service/v%d' % (self.version)
-
-        return self.make_response(json.dumps(data))
-
-
 class StreamedQueryResponse(object):
 
     def __init__(self, stream):
@@ -166,21 +82,101 @@ class StreamedSerialResponseValue(object):
     streaming and caching simultaneously.
     """
 
-    def __init__(self, stream, prefix=None, suffix=None):
-        self.sqr = StreamedQueryResponse(stream)
-        self.prefix = prefix
-        self.suffix = suffix
+    def __init__(self, stream, streamed_query_class=StreamedQueryResponse):
+        self.sqr = streamed_query_class(stream)
 
     def __iter__(self):
         """
         The iterator implementing result to json string generator and
         splitting the results by newlines.
         """
-        if self.prefix:
-            yield self.prefix
+        yield '{"data": '
 
         for item in self.sqr:
             yield item
 
-        if self.suffix:
-            yield self.suffix
+        yield '}'
+
+
+class ServiceResponseFactory(object):
+    MIME_TYPE = 'application/json'
+
+    def __init__(self, version, eol, supported=True, recommended=True):
+        self._eol = eol
+        self._version = version
+        self._supported = supported
+        self._recommended = recommended
+
+    @property
+    def eol(self):
+        return self._eol
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def recommended(self):
+        return self._recommended
+
+    @property
+    def supported(self):
+        return self._supported
+
+    def format_data(self, data):
+        return {'data': data}
+
+    def create_stream(self, data):
+        return StreamedSerialResponseValue(data)
+
+    def make_response(self, data, code=200):
+        if isinstance(data, UpdateStream):
+            data = self.create_stream(data)
+        elif isinstance(data, str):
+            data = data
+        else:
+            data = json.dumps(self.format_data(data))
+
+        return Response(
+            response=data,
+            status=code,
+            mimetype=self.MIME_TYPE
+        )
+
+    def error(self, msg='Could not understand request.', code=400, **kwargs):
+        """
+        Returns an error json response.
+
+        :Parameters:
+            - `msg`: Error message to be returned in json string.
+            - `code`: The code to return as status code for the response.
+        """
+        kwargs['error'] = msg
+        return self.make_response(json.dumps(kwargs), code)
+
+    def success(self, msg='Request successful.', code=201, **kwargs):
+        """
+        Returns a success json resposne.
+
+        :Paramenters:
+            - `msg`: Error message to be returned in json string.
+            - `code`: The code to return as status code for the response.
+        """
+        kwargs['success'] = msg
+        return self.make_response(json.dumps(kwargs), code)
+
+    def status(self):
+        """
+        Returns the status for this service.
+        """
+        data = {}
+
+        if self.eol is not None:
+            data['eol'] = self.eol
+        data['supported'] = self.supported
+        data['recommended'] = self.recommended
+        data['version'] = self.version
+        data['format'] = self.MIME_TYPE
+        data['endpoint'] = '/service/v%d' % (self.version)
+
+        return self.make_response(json.dumps(data))
