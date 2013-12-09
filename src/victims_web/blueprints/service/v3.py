@@ -35,8 +35,8 @@ def invalid_call(path):
     return factory.error('Invalid API call', 404, path=path)
 
 
-@bp.route('/updates/%s/' % (Regex.GROUP), defaults={'since': BEGINNING_OF_TIME})
-@bp.route('/updates/%s/%s/' % (Regex.GROUP, Regex.SINCE))
+@bp.route('/update/%s/' % (Regex.GROUP), defaults={'since': BEGINNING_OF_TIME})
+@bp.route('/update/%s/%s/' % (Regex.GROUP, Regex.SINCE))
 def updates(group, since):
     if isinstance(since, str) or isinstance(since, unicode):
         since = maketime(since)
