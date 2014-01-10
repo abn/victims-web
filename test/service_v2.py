@@ -95,10 +95,15 @@ class TestServiceV2(UserTestCase):
         for item in result:
             assert 'fields' in item.keys()
             for key, testtype in expected.items():
-                assert isinstance(item['fields'][key], testtype)
+                assert key in item['fields'], \
+                    '"%s" not found in response ' % (key)
+                value = item['fields'][key]
+                assert isinstance(value, testtype), \
+                    '"%s": Expected %s got %s' % (
+                        key, testtype.__name__, type(value).__name__)
             if two_way:
                 for key in item['fields']:
-                    assert key in expected
+                    assert key in expected, 'Unexpected Field: "%s"' % (key)
 
     def test_updates(self):
         """
@@ -107,15 +112,11 @@ class TestServiceV2(UserTestCase):
         expected = {
             'date': basestring,
             'name': basestring,
-            'version': basestring,
-            'format': basestring,
             'hashes': dict,
             'vendor': basestring,
             'cves': list,
             'status': basestring,
             'meta': list,
-            'submitter': basestring,
-            'submittedon': basestring,
         }
 
         params = 'fields=%s' % (','.join(expected.keys()))
@@ -125,6 +126,7 @@ class TestServiceV2(UserTestCase):
         result = json.loads(resp.data)
         self.verify_data_structure(result, expected)
 
+    '''
     def test_filtered_updates(self):
         """
         Ensures the response structure is correct for a POST request.
@@ -140,6 +142,7 @@ class TestServiceV2(UserTestCase):
             'hashes': dict
         }
         self.verify_data_structure(result, expected, True)
+    '''
 
     def test_cves_valid(self):
         """
