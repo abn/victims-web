@@ -36,7 +36,7 @@ def invalid_call(path):
 
 
 @bp.route('/update/%s/' % (Regex.GROUP), defaults={'since': BEGINNING_OF_TIME})
-@bp.route('/update/%s/%s/' % (Regex.GROUP, Regex.SINCE))
+@bp.route('/update/%s/%s/' % (Regex.GROUP, Regex.SINCE), methods=['GET'])
 def updates(group, since):
     if isinstance(since, str) or isinstance(since, unicode):
         since = maketime(since)
