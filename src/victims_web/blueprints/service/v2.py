@@ -39,6 +39,10 @@ from victims_web.blueprints.service.response import (
     StreamedQueryResponse, ServiceResponseFactory, StreamedSerialResponseValue)
 
 
+EOL = '2014-06-01T00:00:00'
+bp = Blueprint('service.v2', __name__)
+
+
 class UpdateStreamV2(UpdateStream):
     MODELS = [Record]
 
@@ -111,8 +115,7 @@ class ServiceResponseFactoryV2(ServiceResponseFactory):
         return StreamedSerialResponseValueV2(data, StreamedQueryResponseV2)
 
 
-factory = ServiceResponseFactoryV2(2, '2014-06-01T00:00:00')
-bp = Blueprint('service.v2', __name__)
+factory = ServiceResponseFactoryV2(2, EOL)
 
 
 @bp.route('/', defaults={'path': ''})
@@ -138,8 +141,6 @@ def remove(group, since):
     return factory.make_response(RemoveStreamV2(group, since, False))
 
 
-# Module globals
-EOL = None
 MIME_TYPE = 'application/json'
 
 
