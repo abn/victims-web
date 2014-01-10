@@ -33,6 +33,7 @@ class StreamedQueryResponse(object):
         self.result_count = self.stream.count()
 
     def format_update_item(self, item):
+        # c: collection, a: action, d: document
         response = '{"c": "%s", "a": "%s", "d": %s}'
         return response % (
             item.document._meta['collection'], item.action, item.document.json)
@@ -41,12 +42,17 @@ class StreamedQueryResponse(object):
         """
         Get JSON representation for an item. This maybe me pre/post pickle.
         """
+        def handle_special_objs(obj):
+            if hasattr(obj, 'isoformat'):
+                return obj.isoformat()
+            return str(obj)
+
         if isinstance(item, str):
             return item
         elif isinstance(item, UpdateItem):
             return self.format_update_item(item)
         else:
-            return json.dumps(item)
+            return json.dumps(item, default=handle_special_objs)
 
     def __getstate__(self):
         """
@@ -77,6 +83,7 @@ class StreamedQueryResponse(object):
 
 
 class StreamedSerialResponseValue(object):
+
     """
     A thin wrapper class around the cleaned/filtered results to enable
     streaming and caching simultaneously.
