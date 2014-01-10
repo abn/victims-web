@@ -243,7 +243,7 @@ class Removal_(JsonifyMixin, ValidatedDocument):
     """
     A removal entry
     """
-    meta = {'collection': 'removals'}
+    meta = {'collection': 'removals_'}
 
     date = DateTimeField(default=datetime.datetime.utcnow)
     hash = StringField(regex='^[a-fA-F0-9]*$')
@@ -477,7 +477,7 @@ class Removal(UpdateableDocument):
     deleted.
     """
     # TODO: rename collection name
-    meta = {'collection': 'removals_'}
+    meta = {'collection': 'removals'}
 
     # backwards compat for v2
     hash = StringField(default=None)
