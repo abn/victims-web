@@ -204,11 +204,13 @@ class TestServiceV2(UserTestCase):
         resp = self.app.get('/service/v2/status.json')
         assert resp.content_type == 'application/json'
 
+        from victims_web.blueprints.service.v2 import EOL
+
         result = json.loads(resp.data)
-        assert result['version'] == '2'
-        assert result['recommended'] is True
-        assert result['eol'] is None
-        assert result['supported'] is True
+        assert result['version'] == 2
+        assert result['recommended'] is False
+        assert result['eol'] == EOL.isoformat()
+        assert result['supported'] is (datetime.now() <= EOL)
         assert result['endpoint'] == '/service/v2/'
 
     def test_removals(self):
