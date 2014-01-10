@@ -20,6 +20,7 @@ application versions.
 """
 import json
 
+from datetime import datetime
 from flask import Blueprint, Response, request, current_app
 
 from victims_web.cache import cache
@@ -39,7 +40,7 @@ from victims_web.blueprints.service.response import (
     StreamedQueryResponse, ServiceResponseFactory, StreamedSerialResponseValue)
 
 
-EOL = '2014-06-01T00:00:00'
+EOL = datetime(2014, 6, 1)
 bp = Blueprint('service.v2', __name__)
 
 
@@ -115,7 +116,7 @@ class ServiceResponseFactoryV2(ServiceResponseFactory):
         return StreamedSerialResponseValueV2(data, StreamedQueryResponseV2)
 
 
-factory = ServiceResponseFactoryV2(2, EOL)
+factory = ServiceResponseFactoryV2(2, EOL, True, False)
 
 
 @bp.route('/', defaults={'path': ''})
@@ -240,14 +241,22 @@ def stream_items(items, fields=None):
     return make_response(StreamedSerialResponseValue(items, fields))
 
 
+@bp.route('/status/')
 @bp.route('/status.json')
 @cache.cached()
 def status():
     """
     Return the status of the service.
     """
+    return factory.status()
+
+
+def status_():
+    """
+    Return the status of the service.
+    """
     data = json.dumps({
-        'eol': EOL,
+        'eol': EOL.isoformat(),
         'supported': True,
         'version': '2',
         'recommended': True,

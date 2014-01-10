@@ -20,6 +20,12 @@ from flask import Response
 from victims_web.handlers.updates import UpdateItem, UpdateStream
 
 
+def handle_special_objs(obj):
+    if hasattr(obj, 'isoformat'):
+        return obj.isoformat()
+    return str(obj)
+
+
 class StreamedQueryResponse(object):
 
     def __init__(self, stream):
@@ -42,11 +48,6 @@ class StreamedQueryResponse(object):
         """
         Get JSON representation for an item. This maybe me pre/post pickle.
         """
-        def handle_special_objs(obj):
-            if hasattr(obj, 'isoformat'):
-                return obj.isoformat()
-            return str(obj)
-
         if isinstance(item, str):
             return item
         elif isinstance(item, UpdateItem):
@@ -108,7 +109,7 @@ class StreamedSerialResponseValue(object):
 class ServiceResponseFactory(object):
     MIME_TYPE = 'application/json'
 
-    def __init__(self, version, eol, supported=True, recommended=True):
+    def __init__(self, version, eol=None, supported=True, recommended=True):
         self._eol = eol
         self._version = version
         self._supported = supported
@@ -142,7 +143,8 @@ class ServiceResponseFactory(object):
         elif isinstance(data, str):
             data = data
         else:
-            data = json.dumps(self.format_data(data))
+            data = json.dumps(
+                self.format_data(data), default=handle_special_objs)
 
         return Response(
             response=data,
@@ -184,6 +186,7 @@ class ServiceResponseFactory(object):
         data['recommended'] = self.recommended
         data['version'] = self.version
         data['format'] = self.MIME_TYPE
-        data['endpoint'] = '/service/v%d' % (self.version)
+        data['endpoint'] = '/service/v%d/' % (self.version)
 
-        return self.make_response(json.dumps(data))
+        return self.make_response(
+            json.dumps(data, default=handle_special_objs))

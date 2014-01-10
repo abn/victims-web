@@ -18,13 +18,15 @@
 Version 1 of the webservice. Remember service versions are not the same as
 application versions.
 """
+
+from datetime import datetime
 from json import dumps
 from flask import Blueprint, Response
 
 from victims_web.cache import cache
 
 
-EOL = '2013-06-01T00:00:00'
+EOL = datetime(2013, 6, 1)
 bp = Blueprint('service.v1', __name__)
 
 
@@ -53,7 +55,7 @@ def status():
     Return the status of the service.
     """
     data = dumps({
-        'eol': EOL,
+        'eol': EOL.isoformat(),
         'supported': False,
         'version': '1',
         'recommended': False,
