@@ -142,6 +142,16 @@ def remove(group, since):
     return factory.make_response(RemoveStreamV2(group, since, False))
 
 
+@bp.route('/status/')
+@bp.route('/status.json')
+@cache.cached()
+def status():
+    """
+    Return the status of the service.
+    """
+    return factory.status()
+
+
 MIME_TYPE = 'application/json'
 
 
@@ -239,31 +249,6 @@ class StreamedSerialResponseValue(object):
 
 def stream_items(items, fields=None):
     return make_response(StreamedSerialResponseValue(items, fields))
-
-
-@bp.route('/status/')
-@bp.route('/status.json')
-@cache.cached()
-def status():
-    """
-    Return the status of the service.
-    """
-    return factory.status()
-
-
-def status_():
-    """
-    Return the status of the service.
-    """
-    data = json.dumps({
-        'eol': EOL.isoformat(),
-        'supported': True,
-        'version': '2',
-        'recommended': True,
-        'endpoint': '/service/v2/'
-    })
-
-    return make_response(data)
 
 
 # Routing Regexes
