@@ -149,9 +149,9 @@ class TestServiceV2(UserTestCase):
         Ensure valid cve (hash) search works
         """
         # Test for valid sha512
-        sha512 = "a0a86214ea153fb07ff35ceec0848dd1703eae22de036a825efc8" + \
-            "394e50f65e3044832f3b49cf7e45a39edc470bdf738abc36a3a78c" + \
-            "a7df3a6e73c14eaef94a8"
+        sha512 = "0a50261ebd1a390fed2bf326f2673c145582a6342d523204973d021" + \
+            "9337f81616a8069b012587cf5635f6925f1b56c360230c19b273500ee013" + \
+            "e030601bf2426"
         resp = self.app.get('/service/v2/cves/%s/%s/' % ('sha512', sha512))
         result = json.loads(resp.data)
         assert isinstance(result, list)
