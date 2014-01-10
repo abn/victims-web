@@ -68,11 +68,11 @@ def format_update(doc):
         'fields': {
             'name': doc.filename or '',
             'date': doc.modified,
-            'hash': doc.artifact.checksums['sh512'],
+            'hash': doc.artifact.checksums['sha512'],
             'hashes': {
                 'sha512': {
                     'files': doc.artifact.fingerprint.files,
-                    'combined': doc.artifact.checksums['sh512']
+                    'combined': doc.artifact.checksums['sha512']
                 }
             },
             'cves': doc.cves,
