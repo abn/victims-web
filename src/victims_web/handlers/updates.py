@@ -31,12 +31,13 @@ BEGINNING_OF_TIME = datetime.strptime(BEGINNING_OF_TIME_STR, VICTIMS_TIME_FMT)
 
 
 class UpdateAction(object):
+
     """
     An enum emulator for Update Actions.
     """
-    ADD = 'ADD'
-    UPDATE = 'UPDATE'
-    REMOVE = 'REMOVE'
+    ADD = 'A'
+    UPDATE = 'U'
+    REMOVE = 'R'
 
 
 class UpdateItem(object):
@@ -55,6 +56,7 @@ class UpdateItem(object):
 
 
 class UpdateStream(object):
+
     """
     A combinator for multiple QuerySets of updatable models.
     """
