@@ -70,8 +70,8 @@ app.session_interface = MongoEngineSessionInterface(app.db)
 # this happens after basic setup to facilitate database availability
 from victims_web.admin import administration_setup
 from victims_web.blueprints.service_v1 import v1
-from victims_web.blueprints.service_v2 import v2, SUBMISSION_ROUTES
-from victims_web.blueprints.service import v3
+from victims_web.blueprints.service import v3, v2
+from victims_web.blueprints.service.v2 import SUBMISSION_ROUTES
 from victims_web.blueprints.ui import ui
 from victims_web.blueprints.auth import auth
 
