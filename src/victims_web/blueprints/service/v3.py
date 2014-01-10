@@ -20,13 +20,15 @@ application versions.
 """
 from flask import Blueprint
 
+from victims_web.cache import cache
 from victims_web.handlers.routes import RouteRegex as Regex, maketime
 from victims_web.handlers.updates import BEGINNING_OF_TIME, UpdateStream
 from victims_web.blueprints.service.response import ServiceResponseFactory
 
-factory = ServiceResponseFactory(3, None)
 
+EOL = None
 bp = Blueprint('service.v3', __name__)
+factory = ServiceResponseFactory(3, EOL)
 
 
 @bp.route('/', defaults={'path': ''})
@@ -44,5 +46,10 @@ def updates(group, since):
 
 
 @bp.route('/status/')
+@bp.route('/status.json')
+@cache.cached()
 def status():
+    """
+    Return the status of the service.
+    """
     return factory.status()
