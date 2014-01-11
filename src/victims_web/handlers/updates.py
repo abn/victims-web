@@ -20,7 +20,8 @@ Victims handler for updates.
 from datetime import datetime
 from mongoengine.fields import ReferenceField
 from victims_web.config import VICTIMS_TIME_FMT
-from victims_web.handlers.query import LookAheadQuerySet, DocumentStream, DocumentStreamItem
+from victims_web.handlers.query import \
+    LookAheadQuerySet, DocumentStream, DocumentStreamItem
 from victims_web.models import \
     Record, Artifact, Fingerprint, Removal, UpdateableDocument
 

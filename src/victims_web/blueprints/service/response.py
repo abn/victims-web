@@ -34,7 +34,7 @@ class StreamedQueryResponse(object):
         Creates the streamed response iterator for an `UpdateStream`.
 
         :Parameters:
-           - `result`: `DocumentStream` to create streamed response wrapper for.
+           - `result`: `DocumentStream` to stream.
         """
         self.stream = stream
         self.result_count = self.stream.count()
