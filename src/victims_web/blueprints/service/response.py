@@ -17,7 +17,8 @@
 
 import json
 from flask import Response
-from victims_web.handlers.updates import UpdateItem, UpdateStream
+from victims_web.handlers.updates import UpdateStreamItem
+from victims_web.handlers.query import DocumentStream, DocumentStreamItem
 
 
 def handle_special_objs(obj):
@@ -33,7 +34,7 @@ class StreamedQueryResponse(object):
         Creates the streamed response iterator for an `UpdateStream`.
 
         :Parameters:
-           - `result`: `UpdateStream` to create streamed response wrapper for.
+           - `result`: `DocumentStream` to create streamed response wrapper for.
         """
         self.stream = stream
         self.result_count = self.stream.count()
@@ -50,8 +51,10 @@ class StreamedQueryResponse(object):
         """
         if isinstance(item, str):
             return item
-        elif isinstance(item, UpdateItem):
+        elif isinstance(item, UpdateStreamItem):
             return self.format_update_item(item)
+        elif isinstance(item, DocumentStreamItem):
+            return item.document.json
         else:
             return json.dumps(item, default=handle_special_objs)
 
@@ -138,7 +141,7 @@ class ServiceResponseFactory(object):
         return StreamedSerialResponseValue(data)
 
     def make_response(self, data, code=200):
-        if isinstance(data, UpdateStream):
+        if isinstance(data, DocumentStream):
             data = self.create_stream(data)
         elif isinstance(data, str):
             data = data

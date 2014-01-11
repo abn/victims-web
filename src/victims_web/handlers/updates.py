@@ -20,7 +20,7 @@ Victims handler for updates.
 from datetime import datetime
 from mongoengine.fields import ReferenceField
 from victims_web.config import VICTIMS_TIME_FMT
-from victims_web.handlers.query import LookAheadQuerySet
+from victims_web.handlers.query import LookAheadQuerySet, DocumentStream, DocumentStreamItem
 from victims_web.models import \
     Record, Artifact, Fingerprint, Removal, UpdateableDocument
 
@@ -40,22 +40,18 @@ class UpdateAction(object):
     REMOVE = 'R'
 
 
-class UpdateItem(object):
+class UpdateStreamItem(DocumentStreamItem):
 
     def __init__(self, doc, action):
-        self._doc = doc
+        super(UpdateStreamItem, self).__init__(doc)
         self._action = action
-
-    @property
-    def document(self):
-        return self._doc
 
     @property
     def action(self):
         return self._action
 
 
-class UpdateStream(object):
+class UpdateStream(DocumentStream):
 
     """
     A combinator for multiple QuerySets of updatable models.
@@ -162,5 +158,5 @@ class UpdateStream(object):
         """
         doc = self.next()
         while doc is not None:
-            yield UpdateItem(doc, self.action(doc))
+            yield UpdateStreamItem(doc, self.action(doc))
             doc = self.next()
