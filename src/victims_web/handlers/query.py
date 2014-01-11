@@ -18,14 +18,67 @@
 Victims handlers for database querying.
 """
 
+from abc import ABCMeta, abstractmethod
 
-class LookAheadQuerySet():
+
+class DocumentStream(object):
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def count(self):
+        pass
+
+    @abstractmethod
+    def next(self):
+        pass
+
+    @abstractmethod
+    def __iter__(self):
+        pass
+
+
+class DocumentStreamItem(object):
+
+    def __init__(self, doc):
+        self._doc = doc
+
+    @property
+    def document(self):
+        return self._doc
+
+
+class StreamedQueryItem(DocumentStreamItem):
+    pass
+
+
+class StreamedQuerySet(DocumentStream):
+
+    def __init__(self, query_set):
+        self._qs = query_set
+
+    def __getattr__(self, attr):
+        return getattr(self._qs, attr)
+
+    def count(self):
+        return self._qs.count()
+
+    def next(self):
+        self._qs.next()
+
+    def __iter__(self):
+        for doc in self._qs:
+            yield StreamedQueryItem(doc)
+
+
+class LookAheadQuerySet(StreamedQuerySet):
+
     """
     A wrapper class for mongoengine `QuerySet` that allows adds a
     lookahead-like field.
     """
+
     def __init__(self, query_set):
-        self._qs = query_set
+        super(LookAheadQuerySet, self).__init__(query_set)
         self._lookahead = None
 
     @property
@@ -44,6 +97,3 @@ class LookAheadQuerySet():
         nxt = self.lookahead
         self._lookahead = None
         return nxt
-
-    def __getattr__(self, attr):
-        return getattr(self._qs, attr)
