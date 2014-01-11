@@ -37,7 +37,7 @@ nosetests.xml
 .pydevproject
 
 # developer environment
-dev-env*
+.dev-env*
 
 # runtime files
 victims-web-runtime/*

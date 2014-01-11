@@ -8,7 +8,8 @@
 PYTHON_BIN=python2
 VIRTIALENV_CMD="virtualenv --system-site-packages"
 SETUP_PY="setup.py"
-DIR_PREFIX="dev-env-victims"
+DIR_PREFIX=".dev-env"
+PROMPT_PREFIX="victims"
 
 if [ $# -ne 0 ]; then
     PYTHON_BIN=$1
@@ -33,11 +34,11 @@ function virtualize()
 
     if [ -d ${DIR_NAME} ]; then
         activate $DIR_NAME
-        
-        for REQ in $(find ./ -maxdepth 1 -type f -name "*requirements.txt"); do
-            echo "INFO: Installing requirements from ${REQ}"
-            pip install -qr "${REQ}"
-        done
+        REQS=$(find ./ -maxdepth 1 -type f -name "*requirements.txt" \
+            | xargs -I {} printf " -r %s" {})
+        CMD="pip install -q -e . ${REQS}"
+        echo "INFO: ${CMD}"
+        $CMD
     else
         echo >&2 "ERROR: Failed to activate virtualenv."
     fi
@@ -58,5 +59,3 @@ elif [ ! -f ${SETUP_PY} ]; then
 else
     virtualize
 fi
-
-export PYTHONPATH=$PYTHONPATH:$(pwd)/src
