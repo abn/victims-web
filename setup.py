@@ -34,10 +34,14 @@ test_require = extract_requirements('test-requirements.txt')
 
 setup(
     name='victims_web',
-    version='2.0.1',
+    version='2.1.0-dev',
     description='Victims Web Service',
     author='Steve Milner',
-    url='http://victi.ms',
+    url='https://victi.ms',
+    license='GNU AGPLv3',
+
+    package=['victims_web'],
+    package_dir={'': 'src'},
 
     install_requires=install_requires,
     tests_require=test_require,
