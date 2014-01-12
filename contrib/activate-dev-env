@@ -24,12 +24,15 @@ function activate()
 
 function virtualize()
 {
-    PROMPT=$(basename ${PYTHON_BIN})
+    PROMPT="${PROMPT_PREFIX}-$(basename ${PYTHON_BIN})"
     DIR_NAME="${DIR_PREFIX}-${PROMPT}"
     
     if [ ! -d ${DIR_NAME} ]; then
         echo "INFO: Creating virtualenv ${DIR_NAME}"
-        ${VIRTIALENV_CMD} -p $(which ${PYTHON_BIN}) --prompt "${PROMPT}" ${DIR_NAME}
+        ${VIRTIALENV_CMD} \
+            -p $(which ${PYTHON_BIN}) \
+            --prompt "${PROMPT}" ${DIR_NAME} \
+            --system-site-packages
     fi
 
     if [ -d ${DIR_NAME} ]; then
