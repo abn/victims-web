@@ -4,10 +4,10 @@ from hashlib import sha512
 from mongoengine import StringField, DictField, MapField, ReferenceField, \
     ListField
 
-from victims_web.models import UpdateableDocument
+from victims_web.model import ValidatedDocument, JsonMixin, UpdateMixin
 
 
-class Fingerprint(UpdateableDocument):
+class Fingerprint(ValidatedDocument, JsonMixin, UpdateMixin):
 
     """
     A document to contain an artifact's Victims fingerprtint.
@@ -34,7 +34,7 @@ class Fingerprint(UpdateableDocument):
         self.update_uuid()
 
 
-class Artifact(UpdateableDocument):
+class Artifact(ValidatedDocument, JsonMixin, UpdateMixin):
 
     """
     An artifact document contains artifact checksum in multiple algorithms and
@@ -46,7 +46,17 @@ class Artifact(UpdateableDocument):
     fingerprint = ReferenceField(Fingerprint, default=None)
 
 
-class Record(UpdateableDocument):
+class BaseRecord(object):
+
+    """
+    BaseRecord
+    """
+    coordinates = DictField(default=None)
+    cves = ListField(required=True)
+    filename = StringField(default=None)
+
+
+class Record(ValidatedDocument, JsonMixin, UpdateMixin, BaseRecord):
 
     """
     A record document is the meta container holding CVE, coordinate and other
@@ -54,7 +64,4 @@ class Record(UpdateableDocument):
     """
     meta = {'collection': 'records'}
 
-    coordinates = DictField(default=None)
-    cves = ListField(required=True)
-    filename = StringField(default=None)
     artifact = ReferenceField(Artifact)

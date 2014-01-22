@@ -1,7 +1,7 @@
 import json
 
 from datetime import datetime
-from flask.mongoengine import Document
+from flask.ext.mongoengine import Document
 from mongoengine import StringField, DateTimeField, ObjectIdField
 
 
@@ -95,16 +95,7 @@ class JsonMixin(object):
         return self.mongify()
 
 
-class UpdateableDocument(JsonMixin, ValidatedDocument):
-
-    """
-    An abstract document to handle models that are updatable. Provides fields
-    like group, created and modified.
-    """
-    meta = {
-        'allow_inheritance': False,
-        'abstract': True
-    }
+class UpdateMixin(object):
 
     group = StringField()
     created = DateTimeField(default=datetime.utcnow)
@@ -112,7 +103,7 @@ class UpdateableDocument(JsonMixin, ValidatedDocument):
 
     @property
     def json_skip(self):
-        return super(UpdateableDocument, self).json_skip + [
+        return super(UpdateMixin, self).json_skip + [
             'group', 'created', 'modified'
         ]
 
@@ -164,14 +155,14 @@ class UpdateableDocument(JsonMixin, ValidatedDocument):
             # update modified timestamp
             self.modified = datetime.utcnow()
             self.on_update()
-        super(UpdateableDocument, self).save(*args, **kwargs)
+        super(UpdateMixin, self).save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
         """
         A delete wrapper that creates a new Removal document once deletion
         succeeds.
         """
-        super(UpdateableDocument, self).delete(*args, **kwargs)
+        super(UpdateMixin, self).delete(*args, **kwargs)
         # post deletion, add a delete entry
 
         # backwards compat
@@ -188,10 +179,10 @@ class UpdateableDocument(JsonMixin, ValidatedDocument):
         self.on_delete()
 
 
-class Removal(UpdateableDocument):
+class Removal(ValidatedDocument, JsonMixin, UpdateMixin):
 
     """
-    A removal document maintains history on all UpdateableDocument's that were
+    A removal document maintains a record of all tracked documents  that were
     deleted.
     """
     meta = {'collection': 'removals'}
