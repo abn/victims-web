@@ -18,20 +18,18 @@
 Version 2 of the webservice. Remember service versions are not the same as
 application versions.
 """
-import json
-
 from datetime import datetime
-from flask import Blueprint, Response, request, current_app
+from flask import Blueprint, request, current_app
 
 from victims_web.cache import cache
-from victims_web.config import DEFAULT_GROUP, SUBMISSION_GROUPS
+from victims_web.config import DEFAULT_GROUP
+from victims_web.handlers.query import StreamedQuerySet
 from victims_web.handlers.security import apiauth, api_request_user
 from victims_web.handlers.sslify import ssl_exclude
-from victims_web.models import (
-    Hash, Removal, JsonifyMixin, CoordinateDict, Record
-)
+from victims_web.model import Removal
+from victims_web.model.evd import Artifact, Record
 from victims_web.submissions import submit, upload
-from victims_web.util import groups
+from victims_web.util import groups, group_keys, request_coordinates
 
 
 from victims_web.handlers.routes import RouteRegex as Regex, maketime
@@ -58,7 +56,7 @@ def format_remove(doc):
     return {
         'fields': {
             'date': doc.created,
-            'hash': doc.hash,
+            'hash': doc.hash or '',
         }
     }
 
@@ -122,7 +120,7 @@ factory = ServiceResponseFactoryV2(2, EOL, True, False)
 @bp.route('/', defaults={'path': ''})
 @bp.route('/<path:path>/')
 def invalid_call(path):
-    return error('Invalid API call', 404, path=path)
+    return factory.error('Invalid API call', 404, path=path)
 
 
 @bp.route('/update/%s/' % (Regex.SINCE), defaults={'group': DEFAULT_GROUP})
@@ -131,6 +129,7 @@ def invalid_call(path):
 def update(group, since):
     if isinstance(since, str) or isinstance(since, unicode):
         since = maketime(since)
+    print(group, since)
     return factory.make_response(UpdateStreamV2(group, since, False))
 
 
@@ -152,111 +151,6 @@ def status():
     return factory.status()
 
 
-MIME_TYPE = 'application/json'
-
-
-def make_response(data, code=200):
-    return Response(
-        response=data,
-        status=code,
-        mimetype=MIME_TYPE
-    )
-
-
-def error(msg='Could not understand request.', code=400, **kwargs):
-    """
-    Returns an error json response.
-
-    :Parameters:
-        - `msg`: Error message to be returned in json string.
-        - `code`: The code to return as status code for the response.
-    """
-    kwargs['error'] = msg
-    return make_response(json.dumps([kwargs]), code)
-
-
-def success(msg='Request successful.', code=201, **kwargs):
-    """
-    Returns a success json resposne.
-
-    :Paramenters:
-        - `msg`: Error message to be returned in json string.
-        - `code`: The code to return as status code for the response.
-    """
-    kwargs['success'] = msg
-    return make_response(json.dumps([kwargs]), code)
-
-
-class StreamedSerialResponseValue(object):
-
-    """
-    A thin wrapper class around the cleaned/filtered results to enable
-    streaming and caching simultaneously.
-    """
-
-    def __init__(self, result, fields=None):
-        """
-        Creates the streamed iterator.
-
-        :Parameters:
-           - `result`: The result to iterate over.
-        """
-        self.result = result.clone()
-        self.fields = fields
-        # NOTE: We must do the count else the cursor will stop at 100
-        self.result_count = self.result.count()
-
-    def _json(self, item):
-        if isinstance(item, JsonifyMixin):
-            return item.jsonify(self.fields)
-        elif isinstance(item, str) or isinstance(item, unicode):
-            return str(item)
-        else:
-            return json.dumps(item)
-
-    def __getstate__(self):
-        """
-        The state returned is just the json string of the object
-        """
-        dump = [self._json(o) for o in self.result]
-        return json.dumps((dump, self.fields, self.result_count))
-
-    def __setstate__(self, state):
-        """
-        When unpickling, convert the json string into an py-object
-        """
-        (self.result, self.fields, self.result_count) = json.loads(state)
-
-    def __iter__(self):
-        """
-        The iterator implementing result to json string generator and
-        splitting the results by newlines.
-        """
-        yield "[\n"
-        count = 0
-        for item in self.result:
-            count += 1
-            jsons = self._json(item)
-            if jsons == '{}':
-                continue
-            data = '{"fields": ' + jsons + '}'
-            if count != self.result_count:
-                yield data + ",\n"
-            else:
-                yield data
-        yield "]"
-
-
-def stream_items(items, fields=None):
-    return make_response(StreamedSerialResponseValue(items, fields))
-
-
-# Routing Regexes
-_SINCE_REGEX = '<regex("[0-9\-]{8,}T[0-9:]{8}"):since>'
-_GROUP_REGEX = '<regex("%s"):group>' % ('|'.join(SUBMISSION_GROUPS.keys()))
-_START_DATE = '1970-01-01T00:00:00'
-
-
 @bp.route('/cves/<algorithm>/<arg>/', methods=['GET'])
 def cves_algorithm(algorithm, arg):
     """
@@ -272,16 +166,23 @@ def cves_algorithm(algorithm, arg):
     try:
         algorithms = ['sha512', 'sha1', 'md5']
         if algorithm not in algorithms:
-            return error('Invalid alogrithm. Use any of %s.' % (
-                ', '.join(algorithms)))
+            return factory.error(
+                'Invalid alogrithm. Use any of %s.' % (', '.join(algorithms)))
         elif len(arg) not in [32, 40, 128]:
-            return error('Invalid checksum length for %s' % (algorithm))
+            return factory.error(
+                'Invalid checksum length for %s' % (algorithm))
 
-        kwargs = {("hashes__%s__combined" % (algorithm)): arg}
-        cves = Hash.objects.only('cves').filter(**kwargs)
-        return stream_items(cves, ['cves'])
+        # this lookup is a hack since artifacts__in based querying does not
+        # work as expected with reference fields
+        kwargs = {("checksums__%s" % (algorithm)): arg}
+        artifacts = [a.id for a in Artifact.objects(**kwargs).only('id')]
+        records = []
+        for record in Record.objects.no_dereference().only('cves', 'artifact'):
+            if record.artifact.id in artifacts:
+                records.append({'cves': record.cves})
+        return factory.make_response(records)
     except Exception:
-        return error()
+        return factory.error()
 
 
 @bp.route('/cves/<group>/', methods=['GET'])
@@ -295,11 +196,9 @@ def cves(group):
         - `group`: The group for which to search in
     """
     try:
-        validkeys = CoordinateDict().validkeys
         kwargs = {
-            'coordinates__%s' % (coord): request.args.get(coord).strip()
-            for coord in SUBMISSION_GROUPS.get(group)
-            if coord in request.args and coord in validkeys
+            'coordinates__%s' % (c): v
+            for c, v in request_coordinates(group).items()
         }
 
         if len(kwargs) == 0:
@@ -307,13 +206,13 @@ def cves(group):
 
         kwargs['group'] = group
         fields = ['cves', 'coordinates']
-        cves = Hash.objects.only(*fields).filter(**kwargs)
-        return stream_items(cves, fields)
+        records = Record.objects.only(*fields).filter(**kwargs)
+        return factory.make_response(StreamedQuerySet(records))
     except ValueError as ve:
-        return error(ve.message)
+        return factory.error(ve.message)
     except Exception as e:
         current_app.logger.debug(e.message)
-        return error()
+        return factory.error()
 
 
 @bp.route('/submit/hash/<group>/', methods=['PUT'])
@@ -329,19 +228,22 @@ def submit_hash(group):
         json_data = request.get_json()
         if 'cves' not in json_data:
             raise ValueError('No CVE provided')
-        entry = Hash()
-        entry.mongify(json_data)
-        entry.submitter = user
+
+        hashes = json_data.get(
+            'hashes', {}).get('sha512', {}).get('files', None)
+        coordinates = json_data.get('coordinates', {})
         submit(
-            user, 'json-api-hash', group, suffix='Hash', entry=entry,
-            approval='PENDING_APPROVAL')
-        return success()
+            submitter=user, source='json-api-hash', group=group, hashes=hashes,
+            cves=json_data['cves'], approval='PENDING_APPROVAL',
+            coordinates=coordinates)
+        return factory.success()
     except ValueError as ve:
-        return error(ve.message)
+        return factory.error(ve.message)
     except Exception as e:
         current_app.logger.info('Invalid submission by %s' % (user))
         current_app.logger.debug(e)
-        return error()
+        print(e, e.message)
+        return factory.error()
 
 
 @bp.route('/submit/archive/<group>/', methods=['PUT'])
@@ -360,27 +262,27 @@ def submit_archive(group):
 
         cves = [cve.strip() for cve in request.args['cves'].split(',')]
 
-        coordinates = CoordinateDict({
+        coordinates = {
             coord: request.args.get(coord).strip()
-            for coord in SUBMISSION_GROUPS.get(group)
+            for coord in group_keys(group)
             if coord in request.args
-        })
+        }
         files = upload(group, request.files.get('archive', None), coordinates)
 
         for (ondisk, filename, suffix) in files:
             submit(
-                user, ondisk, group, filename, suffix, cves,
-                coordinates=coordinates
+                submitter=user, source=ondisk, group=group, filename=filename,
+                cves=cves, coordinates=coordinates
             )
 
-        return success()
+        return factory.success()
     except ValueError as ve:
         current_app.logger.info('Invalid submission by %s: %s' %
                                 (user, ve.message))
-        return error(ve.message)
+        return factory.error(ve.message)
     except Exception as e:
         current_app.logger.info(e.message)
-        return error()
+        return factory.error()
 
 SUBMISSION_ROUTES = [submit_hash, submit_archive]
 

@@ -8,7 +8,7 @@ from flask.ext.bcrypt import generate_password_hash
 from mongoengine import StringField, EmailField, ListField, BooleanField, \
     DateTimeField
 
-from victims_web.models import ValidatedDocument
+from victims_web.model import Choices, ValidatedDocument
 from victims_web.config import BCRYPT_LOG_ROUNDS
 
 
@@ -27,7 +27,16 @@ def generate_api_tokens(username):
     return (apikey, secret)
 
 
-class Account(ValidatedDocument):
+UserRoles = Choices(
+    choices={
+        'admin': 'Administrator',
+        'moderator': 'Moderator',
+        'submitter': 'Trusted Submitter',
+        'user': 'Basic User',
+    }, default='user')
+
+
+class User(ValidatedDocument):
 
     """
     A user account.
@@ -38,12 +47,8 @@ class Account(ValidatedDocument):
     password = StringField(required=True)
     email = EmailField()
     roles = ListField(
-        StringField(choices=(
-            ('admin', 'Administrator'),
-            ('moderator', 'Moderator'),
-            ('trusted_submitter', 'Trusted Submitter'),
-        )),
-        default=[]
+        StringField(choices=UserRoles.choices),
+        default=[UserRoles.default]
     )
     active = BooleanField(default=False)
     createdon = DateTimeField(default=datetime.utcnow)

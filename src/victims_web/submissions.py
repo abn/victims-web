@@ -24,39 +24,36 @@ from uuid import uuid4
 from werkzeug import secure_filename
 
 from victims_web import config
-from victims_web.models import Submission
+from victims_web.model.evd import StagedSubmission
 from victims_web.plugin.charon import download
 from victims_web.plugin.crosstalk import indexmon
-from victims_web.util import set_hash
+from victims_web.handlers.submission import set_hash
 
 
-def submit(submitter, source, group=None, filename=None, suffix=None, cves=[],
-           metadata={}, entry=None, approval='REQUESTED', coordinates=None):
+def submit(submitter, source, group=None, filename=None, cves=[],
+           metadata={}, hashes=None, approval='REQUESTED', coordinates=None):
     config.LOGGER.info('Submitting: %s' % (
         ', '.join(['%s:%s' % (k, v) for (k, v) in locals().items()])))
-    submission = Submission()
+
+    submission = StagedSubmission()
     submission.source = source
     submission.group = group
     submission.filename = filename
-    if suffix:
-        submission.format = suffix.title()
-    submission.cves = cves
-    if entry and entry.cves:
-        for cve in entry.cves:
-            if cve not in entry.cves:
-                submission.cves.append(cve)
-    submission.metadata = metadata
+    submission.cves = list(set(cves))
     submission.submitter = submitter
-    if entry:
-        submission.entry = entry
+
+    if isinstance(metadata, dict):
+        metadata = [metadata]
+    submission.metadata = metadata
     submission.approval = approval
     submission.coordinates = coordinates
-
+    submission.fingerprint.files = hashes
+    print(submission.__dict__)
+    #import pdb; pdb.set_trace()
     submission.validate()
     submission.save()
 
     set_hash(submission)
-
     # ensure index stats are refreshed
     indexmon.refresh()
 

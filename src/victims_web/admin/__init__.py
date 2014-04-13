@@ -32,13 +32,15 @@ from flask.ext.admin.contrib.fileadmin import FileAdmin
 
 from victims_web.cache import cache
 from victims_web.handlers.forms import GroupHashable, ValidateOnlyIf
+from victims_web.handlers.submission import set_hash
 from victims_web.models import Account, Hash, Submission
-from victims_web.util import groups, set_hash
+from victims_web.util import groups
 
 from flask.ext import login
 
 
 class SecureMixin(object):
+
     """
     All admin views should mix this in.
     """
@@ -52,6 +54,7 @@ class SecureMixin(object):
 
 
 class SafeAdminIndexView(SecureMixin, AdminIndexView):
+
     """
     Mixes in ViewRequiresAuthorization to require authorization.
     """
@@ -59,6 +62,7 @@ class SafeAdminIndexView(SecureMixin, AdminIndexView):
 
 
 class SafeBaseView(SecureMixin, BaseView):
+
     """
     Mixes in ViewRequiresAuthorization to require authorization.
     """
@@ -66,6 +70,7 @@ class SafeBaseView(SecureMixin, BaseView):
 
 
 class SafeModelView(SecureMixin, ModelView):
+
     """
     Mixes in ViewRequiresAuthorization to require authorization.
     """
@@ -73,6 +78,7 @@ class SafeModelView(SecureMixin, ModelView):
 
 
 class CacheAdminView(SafeBaseView):
+
     """
     Simple cache management.
     """

@@ -22,8 +22,8 @@ from mongoengine.fields import ReferenceField
 from victims_web.config import VICTIMS_TIME_FMT
 from victims_web.handlers.query import \
     LookAheadQuerySet, DocumentStream, DocumentStreamItem
-from victims_web.models import \
-    Record, Artifact, Fingerprint, Removal, UpdateableDocument
+from victims_web.model import Removal, UpdateMixin
+from victims_web.model.evd import Record, Artifact, Fingerprint
 
 
 # The begining of time in the victims update universe
@@ -64,7 +64,7 @@ class UpdateStream(DocumentStream):
         self._streams = []
         self._since = since
         for Model in self.MODELS:
-            if issubclass(Model, UpdateableDocument):
+            if issubclass(Model, UpdateMixin):
                 excludes = []
                 if exclude_ref:
                     excludes = [

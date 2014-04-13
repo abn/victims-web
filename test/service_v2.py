@@ -30,7 +30,7 @@ from os.path import isdir
 from test import UserTestCase
 
 from victims_web.config import DEFAULT_GROUP, UPLOAD_FOLDER, VICTIMS_API_HEADER
-from victims_web.models import Removal, Submission
+from victims_web.models import Submission
 from victims_web.handlers.security import generate_signature
 
 
@@ -155,7 +155,7 @@ class TestServiceV2(UserTestCase):
         resp = self.app.get('/service/v2/cves/%s/%s/' % ('sha512', sha512))
         result = json.loads(resp.data)
         assert isinstance(result, list)
-        assert 'CVE-1969-0001' in result[0]['fields']["cves"]
+        assert 'CVE-1969-0001' in result[0]["cves"]
 
     def test_cves_invalid(self):
         """
@@ -165,15 +165,15 @@ class TestServiceV2(UserTestCase):
         resp = self.app.get('/service/v2/cves/%s/%s/' % ('invalid', 'invalid'))
         result = json.loads(resp.data)
         assert resp.status_code == 400
-        assert isinstance(result, list)
-        assert result[0]['error'].find('Invalid alogrithm') >= 0
+        assert isinstance(result, dict)
+        assert result['error'].find('Invalid alogrithm') >= 0
 
         # Test for invalid argument length
         resp = self.app.get('/service/v2/cves/%s/%s/' % ('sha1', '0'))
         result = json.loads(resp.data)
         assert resp.status_code == 400
-        assert isinstance(result, list)
-        assert result[0]['error'].find('Invalid checksum length for sha1') >= 0
+        assert isinstance(result, dict)
+        assert result['error'].find('Invalid checksum length for sha1') >= 0
 
     def test_cves_coordinates_invalid(self):
         """
@@ -188,14 +188,14 @@ class TestServiceV2(UserTestCase):
         Ensure valid cve (coordinates) search works
         """
         base = '/service/v2/cves/java/'
-        uri1 = '%s?groupId=fake' % (base)
-        uri2 = '%s&version=1.0' % (uri1)
+        uri1 = '%s?groupId=org.foo.bar&artifactId=baz&version=0.0.1' % (base)
+        uri2 = '%s&version=0.0.1' % (uri1)
         for uri in [uri1, uri2]:
             resp = self.app.get(uri)
             assert resp.status_code == 200
             result = json.loads(resp.data)
             assert isinstance(result, list)
-            assert 'CVE-1969-0001' in result[0]['fields']["cves"]
+            assert 'CVE-1969-0001' in result[0]["cves"]
 
     def test_status(self):
         """
@@ -214,14 +214,13 @@ class TestServiceV2(UserTestCase):
         assert result['endpoint'] == '/service/v2/'
 
     def test_removals(self):
-        test_hash = 'ABC123'
-        removal = Removal()
-        removal.hash = test_hash
-        removal.group = DEFAULT_GROUP
-        removal.validate()
-        removal.save()
+        test_hash = '0a50261ebd1a390fed2bf326f2673c145582a6342d523204973' + \
+            'd0219337f81616a8069b012587cf5635f6925f1b56c360230c19b273500' + \
+            'ee013e030601bf2425'
         resp = self.app.get(
-            '/service/v2/remove/1970-01-01T00:00:00', follow_redirects=True)
+            '/service/v2/remove/%s/1970-01-01T00:00:00' % (DEFAULT_GROUP),
+            follow_redirects=True)
+        print(resp.data)
         assert resp.status_code == 200
         assert resp.content_type == 'application/json'
         assert test_hash in resp.data
@@ -239,6 +238,7 @@ class TestServiceV2(UserTestCase):
             follow_redirects=True,
             content_type=content_type
         )
+        print(resp.data)
         assert resp.status_code == status_code
         assert resp.content_type == 'application/json'
 
@@ -246,6 +246,11 @@ class TestServiceV2(UserTestCase):
         testhash = dict(combined="AAAA")
         testhashes = dict(sha512=testhash)
         testdata = dict(name="", hashes=testhashes, cves=['CVE-2013-0000'])
+        testdata['coordinates'] = {
+            'groupId': 'org.victims.test',
+            'artifactId': 'artifact',
+            'version': '0.0.0',
+        }
         testdata = json.dumps(testdata)
         path = '/service/v2/submit/hash/%s/' % (group)
         md5sums = [md5(testdata).hexdigest()]

@@ -37,7 +37,11 @@ class StreamedQueryResponse(object):
            - `result`: `DocumentStream` to stream.
         """
         self.stream = stream
-        self.result_count = self.stream.count()
+
+        try:
+            self.result_count = self.stream.count()
+        except:
+            self.result_count = len(stream)
 
     def format_update_item(self, item):
         # c: collection, a: action, d: document
