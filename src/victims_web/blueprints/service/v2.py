@@ -129,7 +129,6 @@ def invalid_call(path):
 def update(group, since):
     if isinstance(since, str) or isinstance(since, unicode):
         since = maketime(since)
-    print(group, since)
     return factory.make_response(UpdateStreamV2(group, since, False))
 
 
@@ -242,7 +241,6 @@ def submit_hash(group):
     except Exception as e:
         current_app.logger.info('Invalid submission by %s' % (user))
         current_app.logger.debug(e)
-        print(e, e.message)
         return factory.error()
 
 
