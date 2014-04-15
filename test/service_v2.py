@@ -30,11 +30,12 @@ from os.path import isdir
 from test import UserTestCase
 
 from victims_web.config import DEFAULT_GROUP, UPLOAD_FOLDER, VICTIMS_API_HEADER
-from victims_web.models import Submission
+from victims_web.model.evd import Submission
 from victims_web.handlers.security import generate_signature
 
 
 class TestServiceV2(UserTestCase):
+
     """
     Tests for version 2 of the web service.
     """

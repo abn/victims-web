@@ -30,7 +30,7 @@ class TestAdmin(UserTestCase):
     password = 'arj/^fakhsDDASm491'
     prefix = '/admin'
     views = [
-        '', 'cache', 'cache/clear', 'accounts', 'hashes', 'submissions',
+        '', 'cache', 'cache/clear', 'accounts', 'records', 'submissions',
         'downloads', 'uploads'
     ]
 

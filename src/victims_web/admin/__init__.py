@@ -34,7 +34,7 @@ from victims_web.cache import cache
 from victims_web.handlers.forms import GroupHashable, ValidateOnlyIf
 from victims_web.handlers.submission import set_hash
 from victims_web.model.user import User
-from victims_web.models import Hash, Submission
+from victims_web.model.evd import Record, Submission
 from victims_web.util import groups
 
 from flask.ext import login
@@ -52,6 +52,16 @@ class SecureMixin(object):
         """
         if login.current_user.is_authenticated():
             return login.current_user.has_role('admin')
+
+
+class ReadOnlyMixin(SecureMixin, ModelView):
+
+    """
+    Mixes in ViewRequiresAuthorization to require authorization.
+    """
+    can_create = False
+    can_edit = False
+    can_delete = False
 
 
 class SafeAdminIndexView(SecureMixin, AdminIndexView):
@@ -129,15 +139,21 @@ class UserView(SafeModelView):
         super(UserView, self).on_model_change(form, model, is_created)
 
 
-class HashView(SafeModelView):
-    column_filters = ('name', )
-    column_list = ('name', 'version', 'format',
-                   'status', 'submittedon', 'date')
+class RecordView(SafeModelView):
+    can_create = False
+    column_filters = ('group', )
+    column_list = ('group', 'coordinates', 'cves', 'modified')
+    column_labels = dict(cves='CVE(s)')
+    column_formatters = dict(coordinates=lambda v, c, m, p: m.coord)
 
 
 class SubmissionView(SafeModelView):
-    column_filters = ('submitter', 'submittedon', 'approval', )
-    column_exclude_list = ('entry', 'source')
+    can_create = False
+    column_filters = ('submitter', 'group', 'approval', )
+    column_exclude_list = (
+        'fingerprint', 'source', 'metadata', 'checksums', 'filename',
+        'created')
+    column_formatters = dict(coordinates=lambda v, c, m, p: m.coord)
 
     def scaffold_form(self):
         form_class = super(SafeModelView, self).scaffold_form()
@@ -190,8 +206,8 @@ def administration_setup(app):
     administration.add_view(UserView(
         User, name='Users', endpoint='accounts', category='Database')
     )
-    administration.add_view(HashView(
-        Hash, name='Hashes', endpoint='hashes', category='Database')
+    administration.add_view(RecordView(
+        Record, name='Records', endpoint='records', category='Database')
     )
     administration.add_view(SubmissionView(
         Submission, name='Submissions', endpoint='submissions',

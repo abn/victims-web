@@ -7,11 +7,12 @@ from mongoengine import StringField, DictField, MapField, ReferenceField, \
     ListField, DateTimeField, EmbeddedDocument, EmbeddedDocumentField
 
 from victims_web.model import Choices, ValidatedDocument, JsonMixin, \
-    UpdateMixin, StageableMixin
+    UpdateMixin
 from victims_web.model.user import User, UserRoles
+from victims_web.util import group_keys
 
 
-class Fingerprint(ValidatedDocument, JsonMixin, UpdateMixin, StageableMixin):
+class Fingerprint(ValidatedDocument, JsonMixin, UpdateMixin, EmbeddedDocument):
 
     """
     A document to contain an artifact's Victims fingerprtint.
@@ -21,7 +22,7 @@ class Fingerprint(ValidatedDocument, JsonMixin, UpdateMixin, StageableMixin):
     }
 
     uuid = StringField(default=None)
-    files = DictField()
+    files = DictField(default={})
 
     def update_uuid(self):
         """
@@ -67,8 +68,15 @@ class BaseRecord(object):
     BaseRecord
     """
     coordinates = DictField(default=None)
-    cves = ListField(required=True)
+    cves = ListField(field=StringField(), required=True)
     filename = StringField(default=None)
+
+    @property
+    def coord(self):
+        return ':'.join([
+            self.coordinates.get(k, 'unknown')
+            for k in group_keys(self.group)
+        ])
 
 
 class Record(ValidatedDocument, JsonMixin, UpdateMixin, BaseRecord):
@@ -80,6 +88,10 @@ class Record(ValidatedDocument, JsonMixin, UpdateMixin, BaseRecord):
     meta = {'collection': 'records'}
 
     artifact = ReferenceField(Artifact)
+
+    @property
+    def checksum(self):
+        return self.artifact.checksums.get('sha512', None)
 
 
 class Comment(EmbeddedDocument, JsonMixin):
@@ -115,7 +127,7 @@ class BaseSubmission(BaseRecord, JsonMixin, UpdateMixin):
     """
     Base class for submissions
     """
-    submitter = StringField(default=None)  # ReferenceField(User)
+    submitter = StringField(default=None)
     comments = ListField(EmbeddedDocumentField(Comment), default=[])
     approval = StringField(
         choices=SubmissionState.choices,
@@ -136,7 +148,7 @@ class BaseSubmission(BaseRecord, JsonMixin, UpdateMixin):
 
     def comment(self, message, author='auto'):
         self.comments.append(Comment(message=message.strip(), author=author))
-        self.save()
+        ValidatedDocument.save(self)
 
 
 class ApprovedSubmission(ValidatedDocument, BaseSubmission):
@@ -157,20 +169,20 @@ class Submission(ValidatedDocument, BaseArtifact, BaseSubmission):
     meta = {'collection': 'staged_submission'}
 
     source = StringField()
-    fingerprint = Fingerprint().stage(persist=False)
+    fingerprint = EmbeddedDocumentField(Fingerprint)
 
     @property
     def ready(self):
         if self.fingerprint.empty:
             return False
         if (not self.group or len(self.group.strip()) == 0):
-            self.add_comment('no group specified')
+            self.comment('no group specified')
             return False
         if len(self.cves) == 0:
-            self.add_comment('no cves provided')
+            self.comment('no cves provided')
             return False
         if len(self.checksums) == 0:
-            self.add_comment('no checksums provided')
+            self.comment('no checksums provided')
             return False
         return True
 
@@ -187,18 +199,7 @@ class Submission(ValidatedDocument, BaseArtifact, BaseSubmission):
                     return True
         return False
 
-    def _push(self):
-        self.fingerprint.unstage()
-        record = Record()
-        record.artifact = Artifact(
-            group=self.group,
-            cves=self.cves,
-            coordinates=self.coordinates,
-            filename=self.filename,
-            checksums=self.checksums,
-            fingerprint=self.fingerprint.to_dbref()
-        )
-        record.save()
+    def _remove_source(self):
         if isfile(self.source):
             try:
                 remove(self.source)
@@ -206,13 +207,31 @@ class Submission(ValidatedDocument, BaseArtifact, BaseSubmission):
             except:
                 self.comment(
                     'Source deletion failed: {0:s}'.format(self.source))
+
+    def _push(self):
+        fingerprint = self.fingerprint.copy()
+        fingerprint.save()
+        record = Record()
+        artifact = Artifact(
+            group=self.group,
+            coordinates=self.coordinates,
+            filename=self.filename,
+            checksums=self.checksums,
+            fingerprint=fingerprint.to_dbref()
+        )
+        artifact.save()
+        record.artifact = artifact.to_dbref()
+        record.cves = self.cves
+        record.save()
         ApprovedSubmission(
+            cves=self.cves,
             submitter=self.submitter,
             comment=self.comment,
             approval=SubmissionState.IN_DATABASE,
             record=record.to_dbref()
         ).save()
         self.delete()
+        self._remove_source()
 
     def save(self, *args, **kwargs):
         if self.approval == SubmissionState.APPROVED or self.allow_auto_push:

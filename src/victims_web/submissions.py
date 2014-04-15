@@ -24,7 +24,7 @@ from uuid import uuid4
 from werkzeug import secure_filename
 
 from victims_web import config
-from victims_web.model.evd import Submission
+from victims_web.model.evd import Submission, Fingerprint
 from victims_web.plugin.charon import download
 from victims_web.plugin.crosstalk import indexmon
 from victims_web.handlers.submission import set_hash
@@ -47,6 +47,7 @@ def submit(submitter, source, group=None, filename=None, cves=[],
     submission.metadata = metadata
     submission.approval = approval
     submission.coordinates = coordinates
+    submission.fingerprint = Fingerprint()
     submission.fingerprint.files = hashes
     print(submission.__dict__)
     #import pdb; pdb.set_trace()
