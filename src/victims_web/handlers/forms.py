@@ -24,7 +24,7 @@ from wtforms import fields, validators, ValidationError
 
 from victims_web.config import (
     SUBMISSION_GROUPS, DEBUG, HASHING_COMMANDS, TESTING)
-from victims_web.models import Account
+from victims_web.model.user import User
 
 
 def is_field_value(form, fieldname, value, negate=False):
@@ -164,7 +164,7 @@ class UserName():
     Username Validator
     """
     def __call__(self, form, field):
-        if Account.objects(username=field.data).first():
+        if User.objects(username=field.data).first():
             raise ValidationError('Username is not available.')
 
 

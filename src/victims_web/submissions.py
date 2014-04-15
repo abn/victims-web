@@ -24,7 +24,7 @@ from uuid import uuid4
 from werkzeug import secure_filename
 
 from victims_web import config
-from victims_web.model.evd import StagedSubmission
+from victims_web.model.evd import Submission
 from victims_web.plugin.charon import download
 from victims_web.plugin.crosstalk import indexmon
 from victims_web.handlers.submission import set_hash
@@ -35,7 +35,7 @@ def submit(submitter, source, group=None, filename=None, cves=[],
     config.LOGGER.info('Submitting: %s' % (
         ', '.join(['%s:%s' % (k, v) for (k, v) in locals().items()])))
 
-    submission = StagedSubmission()
+    submission = Submission()
     submission.source = source
     submission.group = group
     submission.filename = filename

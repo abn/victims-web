@@ -1,45 +1,41 @@
 {% extends "evd_base.html" %}
 
-{% block title %}Record Details: {{ hash.name }}{% endblock %}
+{% block title %}Record Details{% endblock %}
 
 {% block content %}
 <div class="panel panel-primary">
     <div class="panel-heading">
         <strong>Record Details</strong>
         <div class="pull-right">
-            <span class="label label-default">{{ hash.format }}</span>
-            <span class="label label-default">{{ hash.status }}</span>
         </div>
     </div>
     <div class="panel-body">
         <p>
-        {% for cve in hash.cves %}
+        {% for cve in record.cves %}
         <a class="label label-danger"
             href="https://cve.mitre.org/cgi-bin/cvename.cgi?name={{ cve['id'] }}"
             target="_blank">{{ cve['id'] }}</a>
         {% endfor %}
         </p>
 
-        <p><i>{{ hash.name }}</i></p>
+        <p><i>{{ ':'.join([record.coordinates.get(c, 'unknown') for c in keys]) }}</i></p>
 
         <table class="table table-hover">
             <thead>
                 <tr>
-                    <th>Version</th>
-                    <th>Vendor</th>
                     <th>Submitter</th>
+                    <th>Submitted On</th>
                 </tr>
             </thead>
             <tr>
-                <td>{{ hash.version }}</td>
-                <td>{{ hash.vendor }}</td>
-                <td>{{ hash.submitter }}</td>
+                <td>{{ submission.submitter if submission else 'unknown' }}</td>
+                <td>{{ submission.submittedon if submission else 'unknown' }}</td>
             </tr>
         </table>
 
         {% set active_alg = 'sha512' %}
         <ul class="nav nav-tabs">
-            {% for alg in hash.hashes.keys() %}
+            {% for alg in record.artifact.checksums.keys() %}
             <li{{ ' class=active' if alg.lower() == active_alg else ''  }}>
                 <a href="#{{ alg }}" data-toggle="tab">{{ alg.upper() }}</a>
             </li>
@@ -47,10 +43,10 @@
         </ul>
 
         <div class="tab-content">
-            {% for alg in hash.hashes.keys() %}
+            {% for alg in record.artifact.checksums.keys() %}
             <div class="tab-pane{{ ' active' if alg.lower() == active_alg else ''  }}" id="{{ alg }}">
                 <div class="well well-sm list-group-item-text" style="word-wrap: break-word;">
-                    {{ hash.hashes[alg].combined }}
+                    {{ record.artifact.checksums[alg].combined }}
                 </div>
             </div>
             {% endfor %}

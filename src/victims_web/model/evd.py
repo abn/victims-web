@@ -139,17 +139,17 @@ class BaseSubmission(BaseRecord, JsonMixin, UpdateMixin):
         self.save()
 
 
-class Submission(ValidatedDocument, BaseSubmission):
+class ApprovedSubmission(ValidatedDocument, BaseSubmission):
 
     """
-    Submission records
+    Submission records that were approved and moved to database
     """
     meta = {'collection': 'submissions'}
 
     record = ReferenceField(Record)
 
 
-class StagedSubmission(ValidatedDocument, BaseArtifact, BaseSubmission):
+class Submission(ValidatedDocument, BaseArtifact, BaseSubmission):
 
     """
     Staging collection for user submissions
@@ -206,7 +206,7 @@ class StagedSubmission(ValidatedDocument, BaseArtifact, BaseSubmission):
             except:
                 self.comment(
                     'Source deletion failed: {0:s}'.format(self.source))
-        Submission(
+        ApprovedSubmission(
             submitter=self.submitter,
             comment=self.comment,
             approval=SubmissionState.IN_DATABASE,
@@ -222,4 +222,4 @@ class StagedSubmission(ValidatedDocument, BaseArtifact, BaseSubmission):
                 return None
             self._push()
         else:
-            super(StagedSubmission, self).save(*args, **kwargs)
+            super(Submission, self).save(*args, **kwargs)

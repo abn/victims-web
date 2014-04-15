@@ -33,7 +33,8 @@ from flask.ext.admin.contrib.fileadmin import FileAdmin
 from victims_web.cache import cache
 from victims_web.handlers.forms import GroupHashable, ValidateOnlyIf
 from victims_web.handlers.submission import set_hash
-from victims_web.models import Account, Hash, Submission
+from victims_web.model.user import User
+from victims_web.models import Hash, Submission
 from victims_web.util import groups
 
 from flask.ext import login
@@ -106,7 +107,7 @@ class CacheAdminView(SafeBaseView):
         return redirect(url_for('.index'))
 
 
-class AccountView(SafeModelView):
+class UserView(SafeModelView):
     column_filters = ('username', )
     column_exclude_list = ('password', 'apikey', 'secret')
     form_excluded_columns = ('password', 'apikey', 'secret', 'createdon',
@@ -125,7 +126,7 @@ class AccountView(SafeModelView):
     def on_model_change(self, form, model, is_created):
         if len(form.plaintext_password.data) > 0:
             model.password.set_password(form.plaintext_password.data)
-        super(AccountView, self).on_model_change(form, model, is_created)
+        super(UserView, self).on_model_change(form, model, is_created)
 
 
 class HashView(SafeModelView):
@@ -186,8 +187,8 @@ def administration_setup(app):
     administration.add_view(CacheAdminView(name='Cache', endpoint='cache'))
 
     # Database management
-    administration.add_view(AccountView(
-        Account, name='Accounts', endpoint='accounts', category='Database')
+    administration.add_view(UserView(
+        User, name='Users', endpoint='accounts', category='Database')
     )
     administration.add_view(HashView(
         Hash, name='Hashes', endpoint='hashes', category='Database')

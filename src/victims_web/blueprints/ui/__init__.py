@@ -27,14 +27,15 @@ from flask import (
 from flask.ext import login
 
 from victims_web.cache import cache
-from victims_web.config import SUBMISSION_GROUPS
+from victims_web.config import DEFAULT_GROUP
 from victims_web.errors import ValidationError
 from victims_web.handlers.forms import \
     SUBMISSION_FORMS, ArtifactSubmit, flash_errors
-from victims_web.models import Hash, CoordinateDict
+from victims_web.handlers.routes import RouteRegex as Regex
+from victims_web.model.evd import Artifact, Record, ApprovedSubmission
 from victims_web.plugin.crosstalk import indexmon
 from victims_web.submissions import submit, upload
-from victims_web.util import groups
+from victims_web.util import group_keys
 
 
 ui = Blueprint(
@@ -42,9 +43,6 @@ ui = Blueprint(
     template_folder='templates',
     static_folder='static',
     static_url_path='/static/')  # Last argument needed since we register on /
-
-
-_GROUP_REGEX = '<regex("%s"):group>' % ('|'.join(SUBMISSION_GROUPS.keys()))
 
 
 def _is_hash(data):
@@ -73,46 +71,42 @@ def index():
     return render_template('index.html', **get_data())
 
 
+@ui.route('/hashes/%s/' % (Regex.GROUP), methods=['GET'])
 @cache.memoize()
-def hashes(groups):
-    hashes = Hash.objects(
-        status='RELEASED', group__in=groups
-    ).only('name', 'version', 'hashes.sha512.combined')
-    return render_template('hashes.html', hashes=hashes)
-
-
-@ui.route('/hashes/%s/' % (_GROUP_REGEX), methods=['GET'])
-def hashes_singlegroup(group):
-    if group not in groups():
-        flash(
-            '%s is not a known group. Displaying all hashes.' % (group),
-            'error')
-        return render_template('hashes.html', hashes=[])
-    return hashes([group])
+def hashes(group):
+    records = Record.objects(
+        group=group
+    ).only('coordinates', 'cves', 'artifact').select_related(1)
+    return render_template(
+        'hashes.html', records=records, keys=group_keys(group))
 
 
 @ui.route('/hashes/', methods=['GET'])
-def hashes_multigroup():
-    # expect a comma seperated arg
-    _groups = request.args.get('groups')
-
-    if _groups is None:
-        # default to all groups
-        _groups = groups()
-    else:
-        _groups = [str(g.strip()) for g in _groups.split(',')]
-
-    return hashes(_groups)
+def hashes_default():
+    return redirect(url_for('ui.hashes', group=DEFAULT_GROUP))
 
 
 @ui.route('/hash/<value>', methods=['GET'])
 def onehash(value):
     if _is_hash(value):
-        a_hash = Hash.objects.get_or_404(hashes__sha512__combined=value)
-        return render_template('onehash.html', hash=a_hash)
+        artifact = Artifact.objects.get_or_404(checksums__sha512=value)
+
+        record = Record.objects(artifact=artifact)
+        if record is not None:
+            record = record.get()
+
+        submission = ApprovedSubmission.objects(record=record).only(
+            'submitter', 'created', 'approval')
+
+        if submission is not None:
+            submission = submission.get()
+
+        return render_template(
+            'onehash.html', record=record, submission=submission,
+            keys=group_keys(record.group))
     else:
         flash('Not a valid hash', 'error')
-    return redirect(url_for('ui.hashes_multigroup'))
+    return current_app.error_handlers[404](None)
 
 
 def process_submission(form, group=None):
@@ -124,10 +118,10 @@ def process_submission(form, group=None):
         if group is None:
             group = form.group.data
 
-        coordinates = CoordinateDict({
+        coordinates = {
             coord: form._fields.get('%s' % coord).data.strip()
-            for coord in SUBMISSION_GROUPS.get(group, [])
-        })
+            for coord in group_keys(group, [])
+        }
 
         # remove any empty values
         coordinates = dict(
@@ -159,7 +153,7 @@ def process_submission(form, group=None):
         current_app.logger.debug(oe)
 
 
-@ui.route('/submit/%s/' % (_GROUP_REGEX), methods=['GET', 'POST'])
+@ui.route('/submit/%s/' % (Regex.GROUP), methods=['GET', 'POST'])
 @login.login_required
 def submit_artifact(group):
     form = SUBMISSION_FORMS.get(group, ArtifactSubmit)()

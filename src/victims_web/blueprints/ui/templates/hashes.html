@@ -1,19 +1,27 @@
 {% extends "evd_base.html" %}
 
-{% block title %}Hashes{% endblock %}
+{% block title %}Victims Records{% endblock %}
 
 {% block content %}
 <table class="table table-hover">
     <thead>
         <tr>
-            <th>Name-Version</th>
-            <th>SHA512 Hash</th>
+            <th>Record</th>
+            <th>Coordinates</th>
+            <th>CVE(s)</th>
         </tr>
     </thead>
-    {% for hash in hashes %}
+    {% for record in records %}
     <tr>
-        <td>{{ hash.name }}-{{ hash.version }}</td>
-        <td><a href="{{ url_for('.onehash', value=hash.hashes.sha512.combined) }}">{{ hash.hashes.sha512.combined[0:7] }}</a></td>
+        <td><a href="{{ url_for('.onehash', value=record.artifact.checksums.sha512) }}">{{ record.artifact.checksums.sha512[0:7] }}</a></td>
+        <td>
+            {% set coordinate = [] %}
+            {% for k in keys %}
+                {% do coordinate.append(record.coordinates.get(k, 'unknown')) %}
+            {% endfor %}
+            {{ ':'.join(coordinate) }}
+        </td>
+        <td>{{ ' '.join(record.cves) }}</td>
     </tr>
     {% endfor %}
 </table>

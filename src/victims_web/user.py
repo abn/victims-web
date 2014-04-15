@@ -20,7 +20,7 @@ User related functions.
 
 from flask.ext.login import UserMixin, AnonymousUserMixin
 
-from victims_web.models import Account
+from victims_web.model.user import User
 
 
 # Helpers
@@ -34,7 +34,7 @@ def create_user(username, password, email=None, roles=[]):
         - `roles`: A list of roles to assign the user
         - `email`: The user's email address
     """
-    new_user = Account()
+    new_user = User()
     new_user.username = username
     new_user.set_password(password)
     if email is not None:
@@ -57,11 +57,11 @@ def get_account(value, field='username'):
         - `value`: Value to filter by.
         - `field`: Field to filter on. Default field is username.
     """
-    return Account.objects(**{field: value}).first()
+    return User.objects(**{field: value}).first()
 
 
 def delete_user(username):
-    for account in Account.objects(username=username):
+    for account in User.objects(username=username):
         account.delete()
 
 
@@ -108,7 +108,7 @@ class VictimsUserMixin(object):
         return self.username
 
 
-class User(VictimsUserMixin, UserMixin):
+class VictimsUser(VictimsUserMixin, UserMixin):
     def __init__(self, username, user_obj=None):
         if not user_obj:
             user_obj = get_account(username)

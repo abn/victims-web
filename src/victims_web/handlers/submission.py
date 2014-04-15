@@ -4,7 +4,7 @@ from subprocess import check_output, CalledProcessError
 
 from victims_web import config
 from victims_web.handlers.task import task
-from victims_web.model.evd import StagedSubmission
+from victims_web.model.evd import Submission
 
 
 @task
@@ -13,7 +13,7 @@ def hash_submission(submission_id):
     Helper method to process an archive at source where possible from a
     submission.
     """
-    submission = StagedSubmission.objects(id=submission_id).first()
+    submission = Submission.objects(id=submission_id).first()
 
     if not submission:
         config.LOGGER.debug('Submission %s not found.' % (submission_id))

@@ -30,7 +30,7 @@ from flask.ext.login import (
     LoginManager, current_user, login_user, logout_user, user_logged_in)
 
 from victims_web import config
-from victims_web.user import (AnonymousUser, User, get_account)
+from victims_web.user import (AnonymousUser, VictimsUser, get_account)
 
 
 def safe_redirect_url():
@@ -281,7 +281,7 @@ def login(username, password):
     """
     user_data = authenticate(username, password)
     if user_data:
-        user = User(username)
+        user = VictimsUser(username)
         login_user(user=user)
         return True
     return False
@@ -295,7 +295,7 @@ def logout():
 
 
 def load_user(username):
-    return User(username)
+    return VictimsUser(username)
 
 
 def setup_login_manager(app):
