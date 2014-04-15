@@ -22,6 +22,11 @@ TESTING = True
 SECRET_KEY = b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 PERMANENT_SESSION_LIFETIME = timedelta(1)
 
+# Jinja
+JINJA_EXTENSIONS = [
+    'jinja2.ext.do',
+]
+
 # File upload
 UPLOAD_FOLDER = join(VICTIMS_BASE_DIR, "uploads")
 ALLOWED_EXTENSIONS = set(['egg', 'jar', 'gem'])

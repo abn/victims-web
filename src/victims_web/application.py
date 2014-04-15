@@ -43,6 +43,10 @@ bootstrap = Bootstrap(app)
 # configuration
 app.config.from_object('victims_web.config')
 
+# jinja extensions
+for extension in app.config.get('JINJA_EXTENSIONS', []):
+    app.jinja_env.add_extension(extension)
+
 # logging
 logging.basicConfig(
     filename=os.path.join(app.config.get('LOG_FOLDER'), 'server.log'),
